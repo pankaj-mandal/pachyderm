@@ -1784,11 +1784,14 @@ func TestProvenance(t *testing.T) {
 }
 
 // TestProvenance2 tests the following DAG:
-//   A
-//  / \
+//
+//	 A
+//	/ \
+//
 // B   C
-//  \ /
-//   D
+//
+//	\ /
+//	 D
 func TestProvenance2(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration tests in short mode")
@@ -3908,6 +3911,75 @@ func TestChainedPipelines(t *testing.T) {
 		client.NewCrossInput(
 			client.NewPFSInput(bPipeline, "/"),
 			client.NewPFSInput(dRepo, "/"),
+		),
+		"",
+		false,
+	))
+
+	commitInfo, err := c.InspectCommit(cPipeline, "master", "")
+	require.NoError(t, err)
+
+	commitInfos, err := c.WaitCommitSetAll(commitInfo.Commit.ID)
+	require.NoError(t, err)
+	require.Equal(t, 8, len(commitInfos))
+
+	var buf bytes.Buffer
+	require.NoError(t, c.GetFile(commitInfo.Commit, "bFile", &buf))
+	require.Equal(t, "foo\n", buf.String())
+
+	buf.Reset()
+	require.NoError(t, c.GetFile(commitInfo.Commit, "dFile", &buf))
+	require.Equal(t, "bar\n", buf.String())
+}
+
+// Test tracks https://github.com/pachyderm/pachyderm/pull/8116
+// DAG:
+//
+// A
+// |
+// B
+// |
+// C
+func TestMetaAlias(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration tests in short mode")
+	}
+
+	t.Parallel()
+	c, _ := minikubetestenv.AcquireCluster(t)
+	aRepo := tu.UniqueString("A")
+	require.NoError(t, c.CreateRepo(aRepo))
+
+	aCommit, err := c.StartCommit(aRepo, "master")
+	require.NoError(t, err)
+	require.NoError(t, c.PutFile(aCommit, "file", strings.NewReader("foo\n"), client.WithAppendPutFile()))
+	require.NoError(t, c.FinishCommit(aRepo, "master", ""))
+
+	bPipeline := tu.UniqueString("B")
+	require.NoError(t, c.CreatePipeline(
+		bPipeline,
+		"",
+		[]string{"cp", path.Join("/pfs", aRepo, "file"), "/pfs/out/file"},
+		nil,
+		&pps.ParallelismSpec{
+			Constant: 1,
+		},
+		client.NewPFSInput(aRepo, "/"),
+		"",
+		false,
+	))
+
+	cPipeline := tu.UniqueString("C")
+	require.NoError(t, c.CreatePipeline(
+		cPipeline,
+		"",
+		[]string{"sh"},
+		[]string{fmt.Sprintf("cp /pfs/%s/file /pfs/out/bFile", bPipeline)},
+		&pps.ParallelismSpec{
+			Constant: 1,
+		},
+		client.NewCrossInput(
+			client.NewPFSInput(bPipeline, "/"),
 		),
 		"",
 		false,
