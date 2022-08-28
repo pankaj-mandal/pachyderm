@@ -122,7 +122,7 @@ func TestS3Input(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration tests in short mode")
 	}
-	c, userToken, ns := initPachClient(t)
+	c, _, ns := initPachClient(t)
 
 	repo := tu.UniqueString(t.Name() + "_data")
 	require.NoError(t, c.CreateRepo(repo))
@@ -141,10 +141,6 @@ func TestS3Input(t *testing.T) {
 				"ls -R /pfs >/pfs/out/pfs_files",
 				"aws --endpoint=${S3_ENDPOINT} s3 ls >/pfs/out/s3_buckets",
 				"aws --endpoint=${S3_ENDPOINT} s3 ls s3://input_repo >/pfs/out/s3_files",
-			},
-			Env: map[string]string{
-				"AWS_ACCESS_KEY_ID":     userToken,
-				"AWS_SECRET_ACCESS_KEY": userToken,
 			},
 		},
 		ParallelismSpec: &pps.ParallelismSpec{Constant: 1},
@@ -212,7 +208,7 @@ func TestS3Chain(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration tests in short mode")
 	}
-	c, userToken, _ := initPachClient(t)
+	c, _, _ := initPachClient(t)
 
 	dataRepo := tu.UniqueString(t.Name() + "_data")
 	require.NoError(t, c.CreateRepo(dataRepo))
@@ -236,10 +232,6 @@ func TestS3Chain(t *testing.T) {
 						"aws --endpoint=${S3_ENDPOINT} s3 cp s3://s3g_in/file /tmp/s3in",
 						"echo '1' >> /tmp/s3in",
 						"aws --endpoint=${S3_ENDPOINT} s3 cp /tmp/s3in s3://out/file",
-					},
-					Env: map[string]string{
-						"AWS_ACCESS_KEY_ID":     userToken,
-						"AWS_SECRET_ACCESS_KEY": userToken,
 					},
 				},
 				ParallelismSpec: &pps.ParallelismSpec{Constant: 1},
@@ -323,7 +315,7 @@ func TestS3Output(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration tests in short mode")
 	}
-	c, userToken, ns := initPachClient(t)
+	c, _, ns := initPachClient(t)
 
 	repo := tu.UniqueString(t.Name() + "_data")
 	require.NoError(t, c.CreateRepo(repo))
@@ -341,10 +333,6 @@ func TestS3Output(t *testing.T) {
 			Stdin: []string{
 				"ls -R /pfs | aws --endpoint=${S3_ENDPOINT} s3 cp - s3://out/pfs_files",
 				"aws --endpoint=${S3_ENDPOINT} s3 ls | aws --endpoint=${S3_ENDPOINT} s3 cp - s3://out/s3_buckets",
-			},
-			Env: map[string]string{
-				"AWS_ACCESS_KEY_ID":     userToken,
-				"AWS_SECRET_ACCESS_KEY": userToken,
 			},
 		},
 		ParallelismSpec: &pps.ParallelismSpec{Constant: 1},
@@ -407,7 +395,7 @@ func TestFullS3(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration tests in short mode")
 	}
-	c, userToken, ns := initPachClient(t)
+	c, _, ns := initPachClient(t)
 
 	repo := tu.UniqueString(t.Name() + "_data")
 	require.NoError(t, c.CreateRepo(repo))
@@ -425,10 +413,6 @@ func TestFullS3(t *testing.T) {
 			Stdin: []string{
 				"ls -R /pfs | aws --endpoint=${S3_ENDPOINT} s3 cp - s3://out/pfs_files",
 				"aws --endpoint=${S3_ENDPOINT} s3 ls | aws --endpoint=${S3_ENDPOINT} s3 cp - s3://out/s3_buckets",
-			},
-			Env: map[string]string{
-				"AWS_ACCESS_KEY_ID":     userToken,
-				"AWS_SECRET_ACCESS_KEY": userToken,
 			},
 		},
 		ParallelismSpec: &pps.ParallelismSpec{Constant: 1},
@@ -494,7 +478,7 @@ func TestS3SkippedDatums(t *testing.T) {
 	}
 	name := t.Name()
 
-	c, userToken, ns := initPachClient(t)
+	c, _, ns := initPachClient(t)
 
 	t.Run("S3Inputs", func(t *testing.T) {
 		// TODO(2.0 optional): Duplicate file paths from different datums no longer allowed.
@@ -530,10 +514,6 @@ func TestS3SkippedDatums(t *testing.T) {
 					"aws --endpoint=${S3_ENDPOINT} s3 cp s3://s3g_in/file /tmp/s3in",
 					"cat /pfs/pfs_in/* >/tmp/pfsin",
 					"echo \"$(cat /tmp/bg) $(cat /tmp/pfsin) $(cat /tmp/s3in)\" >/pfs/out/out",
-				},
-				Env: map[string]string{
-					"AWS_ACCESS_KEY_ID":     userToken,
-					"AWS_SECRET_ACCESS_KEY": userToken,
 				},
 			},
 			ParallelismSpec: &pps.ParallelismSpec{Constant: 1},
@@ -696,10 +676,6 @@ func TestS3SkippedDatums(t *testing.T) {
 					// Because S3-out jobs don't merge their outputs with their parent's
 					// outputs, we should only see one such file in every job's output.
 					"aws --endpoint=${S3_ENDPOINT} s3 cp /tmp/bg s3://out/bg/\"$(cat /tmp/bg)\"",
-				},
-				Env: map[string]string{
-					"AWS_ACCESS_KEY_ID":     userToken,
-					"AWS_SECRET_ACCESS_KEY": userToken,
 				},
 			},
 			ParallelismSpec: &pps.ParallelismSpec{Constant: 1},

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	
+
 	"os"
 	"os/user"
 	"path"
@@ -83,7 +83,7 @@ type Driver interface {
 
 	// UserCodeEnv returns the set of environment variables to construct when
 	// launching the configured user process.
-	UserCodeEnv(string, *pfs.Commit, []*common.Input) []string
+	UserCodeEnv(string, *pfs.Commit, []*common.Input, string) []string
 
 	RunUserCode(context.Context, logs.TaggedLogger, []string) error
 
@@ -504,6 +504,7 @@ func (d *driver) UserCodeEnv(
 	jobID string,
 	outputCommit *pfs.Commit,
 	inputs []*common.Input,
+	authToken string,
 ) []string {
 	result := os.Environ()
 
@@ -518,6 +519,12 @@ func (d *driver) UserCodeEnv(
 		}
 	}
 	result = append(result, fmt.Sprintf("%s=%s", client.DatumIDEnv, common.DatumID(inputs)))
+	if authToken != "" {
+		// Pass this pipeline's auth token to user code. Set this here instead of in
+		// the Worker RC so that auth credentials don't appear in 'kubectl describe
+		// rc/<worker_rc>'
+		result = append(result, "PACH_PIPELINE_TOKEN="+authToken)
+	}
 
 	if jobID != "" {
 		result = append(result, fmt.Sprintf("%s=%s", client.JobIDEnv, jobID))
@@ -538,6 +545,14 @@ func (d *driver) UserCodeEnv(
 					os.Getenv("S3GATEWAY_PORT"),
 				),
 			)
+
+			// Set AWS_... creds vars in addition to PACH_PIPELINE_TOKEN so that any
+			// S3 clients running in the user code use these and successfully connect
+			// by default
+			if authToken != "" {
+				result = append(result, "AWS_ACCESS_KEY_ID="+authToken)
+				result = append(result, "AWS_SECRET_ACCESS_KEY="+authToken)
+			}
 		}
 	}
 

@@ -372,7 +372,7 @@ func handleDatumSet(driver driver.Driver, logger logs.TaggedLogger, datumSet *Da
 						meta.ImageId = userImageID
 						inputs := meta.Inputs
 						logger = logger.WithData(inputs)
-						env := driver.UserCodeEnv(logger.JobID(), datumSet.OutputCommit, inputs)
+						env := driver.UserCodeEnv(logger.JobID(), datumSet.OutputCommit, inputs, driver.PipelineInfo().GetAuthToken())
 						var opts []datum.Option
 						if driver.PipelineInfo().Details.DatumTimeout != nil {
 							timeout, err := types.DurationFromProto(driver.PipelineInfo().Details.DatumTimeout)
