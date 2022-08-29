@@ -3947,7 +3947,8 @@ func TestMetaAlias(t *testing.T) {
 
 	t.Parallel()
 	c, _ := minikubetestenv.AcquireCluster(t)
-	aRepo := tu.UniqueString("A")
+	//aRepo := tu.UniqueString("A")
+	aRepo := "A"
 	require.NoError(t, c.CreateRepo(aRepo))
 
 	aCommit, err := c.StartCommit(aRepo, "master")
@@ -3955,7 +3956,8 @@ func TestMetaAlias(t *testing.T) {
 	require.NoError(t, c.PutFile(aCommit, "file", strings.NewReader("foo\n"), client.WithAppendPutFile()))
 	require.NoError(t, c.FinishCommit(aRepo, "master", ""))
 
-	bPipeline := tu.UniqueString("B")
+	//bPipeline := tu.UniqueString("B")
+	bPipeline := "B"
 	require.NoError(t, c.CreatePipeline(
 		bPipeline,
 		"",
@@ -3969,36 +3971,41 @@ func TestMetaAlias(t *testing.T) {
 		false,
 	))
 
-	cPipeline := tu.UniqueString("C")
+	//cPipeline := tu.UniqueString("C")
+	cPipeline := "C"
 	require.NoError(t, c.CreatePipeline(
 		cPipeline,
 		"",
 		[]string{"sh"},
-		[]string{fmt.Sprintf("cp /pfs/%s/file /pfs/out/bFile", bPipeline)},
+		[]string{fmt.Sprintf("cp /pfs/%s/file /pfs/out/file", bPipeline)},
 		&pps.ParallelismSpec{
 			Constant: 1,
 		},
-		client.NewCrossInput(
-			client.NewPFSInput(bPipeline, "/"),
-		),
+		client.NewPFSInput(bPipeline, "/"),
 		"",
 		false,
 	))
+
+	// list b.meta commits
+	//bmetaCommits, err := c.ListCommit(client.NewRepo("B.meta"), nil, nil, 0)
+	//cCommits, err := c.ListCommit(client.NewRepo("C"), nil, nil, 0)
+
+	// ensure both match
+	//require.Equal(t, bmetaCommits)
 
 	commitInfo, err := c.InspectCommit(cPipeline, "master", "")
 	require.NoError(t, err)
 
 	commitInfos, err := c.WaitCommitSetAll(commitInfo.Commit.ID)
 	require.NoError(t, err)
-	require.Equal(t, 8, len(commitInfos))
+	require.Equal(t, 7, len(commitInfos))
 
 	var buf bytes.Buffer
-	require.NoError(t, c.GetFile(commitInfo.Commit, "bFile", &buf))
+	require.NoError(t, c.GetFile(commitInfo.Commit, "file", &buf))
 	require.Equal(t, "foo\n", buf.String())
 
-	buf.Reset()
-	require.NoError(t, c.GetFile(commitInfo.Commit, "dFile", &buf))
-	require.Equal(t, "bar\n", buf.String())
+	c.StopPipeline(bPipeline)
+	c.StartPipeline(bPipeline)
 }
 
 // DAG:
