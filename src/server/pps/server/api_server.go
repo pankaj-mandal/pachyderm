@@ -2186,6 +2186,7 @@ func (a *apiServer) initializePipelineInfo(request *pps.CreatePipelineRequest, o
 			Metadata:              request.Metadata,
 			ReprocessSpec:         request.ReprocessSpec,
 			Autoscaling:           request.Autoscaling,
+			Batching:              request.Batching,
 			Tolerations:           request.Tolerations,
 		},
 	}

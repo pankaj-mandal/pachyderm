@@ -2839,7 +2839,8 @@ type PipelineInfo_Details struct {
 	UnclaimedTasks        int64            `protobuf:"varint,31,opt,name=unclaimed_tasks,json=unclaimedTasks,proto3" json:"unclaimed_tasks,omitempty"`
 	WorkerRc              string           `protobuf:"bytes,32,opt,name=worker_rc,json=workerRc,proto3" json:"worker_rc,omitempty"`
 	Autoscaling           bool             `protobuf:"varint,33,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
-	Tolerations           []*Toleration    `protobuf:"bytes,34,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	Batching              bool             `protobuf:"varint,34,opt,name=batching,proto3" json:"batching,omitempty"`
+	Tolerations           []*Toleration    `protobuf:"bytes,35,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
 	XXX_NoUnkeyedLiteral  struct{}         `json:"-"`
 	XXX_unrecognized      []byte           `json:"-"`
 	XXX_sizecache         int32            `json:"-"`
@@ -3091,6 +3092,13 @@ func (m *PipelineInfo_Details) GetWorkerRc() string {
 func (m *PipelineInfo_Details) GetAutoscaling() bool {
 	if m != nil {
 		return m.Autoscaling
+	}
+	return false
+}
+
+func (m *PipelineInfo_Details) GetBatching() bool {
+	if m != nil {
+		return m.Batching
 	}
 	return false
 }
@@ -4478,7 +4486,8 @@ type CreatePipelineRequest struct {
 	Metadata             *Metadata       `protobuf:"bytes,28,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	ReprocessSpec        string          `protobuf:"bytes,29,opt,name=reprocess_spec,json=reprocessSpec,proto3" json:"reprocess_spec,omitempty"`
 	Autoscaling          bool            `protobuf:"varint,30,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
-	Tolerations          []*Toleration   `protobuf:"bytes,34,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	Batching             bool            `protobuf:"varint,34,opt,name=batching,proto3" json:"batching,omitempty"`
+	Tolerations          []*Toleration   `protobuf:"bytes,35,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -4709,6 +4718,13 @@ func (m *CreatePipelineRequest) GetReprocessSpec() string {
 func (m *CreatePipelineRequest) GetAutoscaling() bool {
 	if m != nil {
 		return m.Autoscaling
+	}
+	return false
+}
+
+func (m *CreatePipelineRequest) GetBatching() bool {
+	if m != nil {
+		return m.Batching
 	}
 	return false
 }
@@ -10046,6 +10062,18 @@ func (m *PipelineInfo_Details) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			dAtA[i] = 0x92
 		}
 	}
+	if m.Batching {
+		i--
+		if m.Batching {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x2
+		i--
+		dAtA[i] = 0x90
+	}
 	if m.Autoscaling {
 		i--
 		if m.Autoscaling {
@@ -11577,6 +11605,18 @@ func (m *CreatePipelineRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			i--
 			dAtA[i] = 0x92
 		}
+	}
+	if m.Batching {
+		i--
+		if m.Batching {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xf8
 	}
 	if m.Autoscaling {
 		i--
@@ -14038,6 +14078,9 @@ func (m *PipelineInfo_Details) Size() (n int) {
 	if m.Autoscaling {
 		n += 3
 	}
+	if m.Batching {
+		n += 3
+	}
 	if len(m.Tolerations) > 0 {
 		for _, e := range m.Tolerations {
 			l = e.Size()
@@ -14652,6 +14695,9 @@ func (m *CreatePipelineRequest) Size() (n int) {
 		n += 2 + l + sovPps(uint64(l))
 	}
 	if m.Autoscaling {
+		n += 3
+	}
+	if m.Batching {
 		n += 3
 	}
 	if len(m.Tolerations) > 0 {
@@ -22610,6 +22656,26 @@ func (m *PipelineInfo_Details) Unmarshal(dAtA []byte) error {
 			}
 			m.Autoscaling = bool(v != 0)
 		case 34:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Batching", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowPps
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Batching = bool(v != 0)
+		case 35:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Tolerations", wireType)
 			}
@@ -26635,6 +26701,26 @@ func (m *CreatePipelineRequest) Unmarshal(dAtA []byte) error {
 			}
 			m.Autoscaling = bool(v != 0)
 		case 34:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Batching", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowPps
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Batching = bool(v != 0)
+		case 35:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Tolerations", wireType)
 			}
