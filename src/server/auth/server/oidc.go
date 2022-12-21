@@ -21,7 +21,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const threeMinutes = 3 * 60 // Passed to col.PutTTL (so value is in seconds)
+const tenMinutes = 10 * 60 // Passed to col.PutTTL (so value is in seconds)
 
 // various oidc invalid argument errors. Use 'goerror' instead of internal
 // 'errors' library b/c stack trace isn't useful
@@ -154,7 +154,7 @@ func (a *apiServer) GetOIDCLoginURL(ctx context.Context) (string, string, error)
 	if _, err := col.NewSTM(ctx, a.env.EtcdClient, func(stm col.STM) error {
 		return errors.EnsureStack(a.oidcStates.ReadWrite(stm).PutTTL(state, &auth.SessionInfo{
 			Nonce: nonce, // read & verified by /authorization-code/callback
-		}, threeMinutes))
+		}, tenMinutes))
 	}); err != nil {
 		return "", "", errors.Wrap(err, "could not create OIDC login session")
 	}
