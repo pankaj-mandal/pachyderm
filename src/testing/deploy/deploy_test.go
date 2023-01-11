@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pachyderm/pachyderm/v2/src/auth"
 	"github.com/pachyderm/pachyderm/v2/src/client"
@@ -108,7 +107,7 @@ func mockIDPLogin(t testing.TB, c *client.APIClient) {
 	loginInfo, err := c.GetOIDCLogin(c.Ctx(), &auth.GetOIDCLoginRequest{})
 	require.NoError(t, err)
 	state := loginInfo.State
-	time.Sleep(4 * time.Minute)
+
 	// Get the initial URL from the grpc, which should point to the dex login page
 	resp, err := hc.Get(loginInfo.LoginURL)
 	require.NoError(t, err)
