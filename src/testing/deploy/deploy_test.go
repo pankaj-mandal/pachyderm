@@ -108,7 +108,7 @@ func mockIDPLogin(t testing.TB, c *client.APIClient) {
 	loginInfo, err := c.GetOIDCLogin(c.Ctx(), &auth.GetOIDCLoginRequest{})
 	require.NoError(t, err)
 	state := loginInfo.State
-
+	time.Sleep(4 * time.Minute)
 	// Get the initial URL from the grpc, which should point to the dex login page
 	resp, err := hc.Get(loginInfo.LoginURL)
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func mockIDPLogin(t testing.TB, c *client.APIClient) {
 
 	_, err = hc.PostForm(resp.Request.URL.String(), vals)
 	require.NoError(t, err)
-	time.Sleep(10 * time.Second) // TODO  - remove debug code with real solution
+
 	authResp, err := c.AuthAPIClient.Authenticate(c.Ctx(), &auth.AuthenticateRequest{OIDCState: state})
 	require.NoError(t, err)
 	c.SetAuthToken(authResp.PachToken)
