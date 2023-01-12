@@ -4,11 +4,14 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pachyderm/pachyderm/v2/src/auth"
 	"github.com/pachyderm/pachyderm/v2/src/client"
@@ -38,8 +41,9 @@ func TestInstallAndUpgradeEnterpriseWithEnv(t *testing.T) {
 	require.Equal(t, auth.RootUser, whoami.Username)
 	c.SetAuthToken("")
 	mockIDPLogin(t, c)
+
 	// Test Upgrade
-	opts.CleanupAfter = true
+	// opts.CleanupAfter = true
 	// set new root token via env
 	opts.AuthUser = ""
 	token := "new-root-token"
@@ -116,8 +120,16 @@ func mockIDPLogin(t testing.TB, c *client.APIClient) {
 	vals.Add("login", "admin")
 	vals.Add("password", "password")
 
-	_, err = hc.PostForm(resp.Request.URL.String(), vals)
-	require.NoError(t, err)
+	require.NoErrorWithinTRetry(t, 2*time.Minute, func() error {
+		loginResp, err := hc.PostForm(resp.Request.URL.String(), vals)
+		require.NoError(t, err)
+		loginRespString, _ := ioutil.ReadAll(loginResp.Body)
+		fmt.Printf("LOGIN RESP: %s - code: %d\n", string(loginRespString), loginResp.StatusCode)
+		if loginResp.StatusCode != 200 {
+			return fmt.Errorf("Recieved an invalid status code logging into DEX! Code: %d", loginResp.StatusCode)
+		}
+		return nil
+	})
 
 	authResp, err := c.AuthAPIClient.Authenticate(c.Ctx(), &auth.AuthenticateRequest{OIDCState: state})
 	require.NoError(t, err)
