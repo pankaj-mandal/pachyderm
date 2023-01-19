@@ -364,7 +364,7 @@ func waitForPachd(t testing.TB, ctx context.Context, kubeClient *kube.Clientset,
 	if enterpriseServer {
 		label = "app=pach-enterprise"
 	}
-	require.NoErrorWithinTRetry(t, 5*time.Minute, func() error {
+	require.NoErrorWithinTRetryConstant(t, 5*time.Minute, func() error {
 		pachds, err := kubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: label})
 		if err != nil {
 			return errors.Wrap(err, "error on pod list")
@@ -377,7 +377,7 @@ func waitForPachd(t testing.TB, ctx context.Context, kubeClient *kube.Clientset,
 			unacceptablePachds = append(unacceptablePachds, fmt.Sprintf("%v: image=%v status=%#v", p.Name, p.Spec.Containers[0].Image, p.Status))
 		}
 		return errors.Errorf("deployment in progress: pachds: %v", strings.Join(unacceptablePachds, "; "))
-	})
+	}, 300*time.Millisecond)
 }
 
 func waitForLoki(t testing.TB, lokiHost string, lokiPort int) {
@@ -471,7 +471,7 @@ func createSecretEnterpriseKeySecret(t testing.TB, ctx context.Context, kubeClie
 	require.True(t, err == nil || strings.Contains(err.Error(), "already exists"), "Error '%v' does not contain 'already exists'", err)
 }
 
-func putRelease(t testing.TB, ctx context.Context, namespace string, kubeClient *kube.Clientset, f helmPutE, opts *DeployOpts) *client.APIClient {
+func putRelease(t testing.TB, ctx context.Context, namespace string, kubeClient *kube.Clientset, f helmPutE, opts *DeployOpts, waitForReady bool) *client.APIClient {
 	if opts.CleanupAfter {
 		t.Cleanup(func() {
 			deleteRelease(t, context.Background(), namespace, kubeClient)
@@ -539,13 +539,17 @@ func putRelease(t testing.TB, ctx context.Context, namespace string, kubeClient 
 		// successful.
 		require.NoErrorWithinTRetry(t, time.Minute, func() error { return f(t, helmOpts, chartPath, namespace) })
 	}
+
 	waitForPachd(t, ctx, kubeClient, namespace, version, opts.EnterpriseServer)
-	if !opts.DisableLoki {
-		waitForLoki(t, pachAddress.Host, int(pachAddress.Port)+9)
-	}
-	waitForPgbouncer(t, ctx, kubeClient, namespace)
-	if opts.WaitSeconds > 0 {
-		time.Sleep(time.Duration(opts.WaitSeconds) * time.Second)
+
+	if waitForReady {
+		if !opts.DisableLoki {
+			waitForLoki(t, pachAddress.Host, int(pachAddress.Port)+9)
+		}
+		waitForPgbouncer(t, ctx, kubeClient, namespace)
+		if opts.WaitSeconds > 0 {
+			time.Sleep(time.Duration(opts.WaitSeconds) * time.Second)
+		}
 	}
 	return pachClient(t, pachAddress, opts.AuthUser, namespace, opts.CertPool)
 }
@@ -567,11 +571,11 @@ func PutNamespace(t testing.TB, namespace string) {
 // Deploy pachyderm using a `helm upgrade ...`
 // returns an API Client corresponding to the deployment
 func UpgradeRelease(t testing.TB, ctx context.Context, namespace string, kubeClient *kube.Clientset, opts *DeployOpts) *client.APIClient {
-	return putRelease(t, ctx, namespace, kubeClient, helmLock(helm.UpgradeE), opts)
+	return putRelease(t, ctx, namespace, kubeClient, helmLock(helm.UpgradeE), opts, false)
 }
 
 // Deploy pachyderm using a `helm install ...`
 // returns an API Client corresponding to the deployment
 func InstallRelease(t testing.TB, ctx context.Context, namespace string, kubeClient *kube.Clientset, opts *DeployOpts) *client.APIClient {
-	return putRelease(t, ctx, namespace, kubeClient, helmLock(helm.InstallE), opts)
+	return putRelease(t, ctx, namespace, kubeClient, helmLock(helm.InstallE), opts, true)
 }

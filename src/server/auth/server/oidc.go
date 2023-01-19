@@ -200,6 +200,7 @@ func (a *apiServer) OIDCStateToEmail(ctx context.Context, state string) (email s
 
 		// lookup the token from the given state
 		for e := range watcher.Watch() {
+			log.Info(ctx, fmt.Sprintf("We have an event occuring! %v - type %v", e, e.Type))
 			if e.Type == watch.EventError {
 				// reestablish watch (error not returned to user)
 				return e.Err

@@ -422,19 +422,24 @@ spec:
             command:
             - /pachd
             - --readiness
+          failureThreshold: 1
+          timeoutSeconds: 10
+          periodSeconds: 1
         livenessProbe:
           exec:
             command:
             - /pachd
             - --readiness
-          failureThreshold: 10
+          failureThreshold: 100
+          periodSeconds: 1
           timeoutSeconds: 30
         startupProbe:
           exec:
             command:
             - /pachd
             - --readiness
-          failureThreshold: 10
+          failureThreshold: 100
+          periodSeconds: 1
           timeoutSeconds: 30
         {{- if .Values.pachd.resources }}
         resources: {{ toYaml .Values.pachd.resources | nindent 10 }}
