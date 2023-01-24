@@ -43,9 +43,10 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				ns,
 				k,
 				&minikubetestenv.DeployOpts{
-					Version:     from,
-					DisableLoki: true,
-					PortOffset:  portOffset,
+					Version:      from,
+					DisableLoki:  true,
+					PortOffset:   portOffset,
+					CleanupAfter: true,
 					// For 2.3 -> future upgrades, we'll want to delete these
 					// overrides.  They became the default (instead of random)
 					// in the 2.3 alpha cycle.
@@ -59,7 +60,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				ns,
 				k,
 				&minikubetestenv.DeployOpts{
-					WaitSeconds:  60,
+					WaitSeconds:  10,
 					CleanupAfter: true,
 					PortOffset:   portOffset,
 				}))
