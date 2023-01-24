@@ -59,7 +59,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				ns,
 				k,
 				&minikubetestenv.DeployOpts{
-					WaitSeconds:  10,
+					WaitSeconds:  60,
 					CleanupAfter: true,
 					PortOffset:   portOffset,
 				}))
