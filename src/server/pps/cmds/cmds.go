@@ -1337,9 +1337,10 @@ All jobs created by a pipeline will create commits in the pipeline's output repo
 	commands = append(commands, cmdutil.CreateAlias(runLoadTest, "run pps-load-test"))
 
 	nextDatum := &cobra.Command{
-		Use:   "{{alias}}",
-		Short: "Used internally for datum batching",
-		Long:  "Used internally for datum batching",
+		Hidden: true, // don't show in the list of commands
+		Use:    "{{alias}}",
+		Short:  "Used internally for datum batching",
+		Long:   "Used internally for datum batching",
 		Run: cmdutil.Run(func(_ []string) error {
 			c, err := workerserver.NewClient("127.0.0.1")
 			if err != nil {
