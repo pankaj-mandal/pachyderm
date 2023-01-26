@@ -449,7 +449,7 @@ func deleteRelease(t testing.TB, ctx context.Context, namespace string, kubeClie
 	mu.Unlock()
 	require.True(t, err == nil || strings.Contains(err.Error(), "not found"))
 	require.NoError(t, kubeClient.CoreV1().PersistentVolumeClaims(namespace).DeleteCollection(ctx, *metav1.NewDeleteOptions(0), metav1.ListOptions{LabelSelector: "suite=pachyderm"}))
-	require.NoError(t, backoff.Retry(func() error {
+	require.NoError(t, backoff.RetryUntilCancel(ctx, func() error {
 		pvcs, err := kubeClient.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{LabelSelector: "suite=pachyderm"})
 		if err != nil {
 			return errors.Wrap(err, "error on pod list")
@@ -458,7 +458,7 @@ func deleteRelease(t testing.TB, ctx context.Context, namespace string, kubeClie
 			return nil
 		}
 		return errors.Errorf("pvcs have yet to be deleted")
-	}, backoff.RetryEvery(5*time.Second).For(2*time.Minute)))
+	}, backoff.RetryEvery(5*time.Second).For(2*time.Minute), nil))
 }
 
 func createSecretEnterpriseKeySecret(t testing.TB, ctx context.Context, kubeClient *kube.Clientset, ns string) {
