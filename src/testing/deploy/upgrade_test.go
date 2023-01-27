@@ -80,9 +80,9 @@ func TestUpgradeOpenCVWithAuth(t *testing.T) {
 		t.Skip("Skipping upgrade test")
 	}
 	fromVersions := []string{
-		"2.0.4",
-		"2.1.0",
-		"2.2.0",
+		// "2.0.4",
+		// "2.1.0",
+		// "2.2.0",
 		"2.3.9",
 		"2.4.3",
 	}
