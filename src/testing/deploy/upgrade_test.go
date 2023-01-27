@@ -47,7 +47,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 					Version:      fromCache,
 					DisableLoki:  true,
 					PortOffset:   portOffset,
-					CleanupAfter: true,
+					CleanupAfter: false,
 					// For 2.3 -> future upgrades, we'll want to delete these
 					// overrides.  They became the default (instead of random)
 					// in the 2.3 alpha cycle.
