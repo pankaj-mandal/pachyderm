@@ -35,6 +35,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 	k := testutil.GetKubeClient(suite)
 	for _, from := range fromVersions {
 		suite.Run(fmt.Sprintf("UpgradeFrom_%s", from), func(t *testing.T) {
+			fromCache := from // handle captured variable with t.Parallel()
 			t.Parallel()
 			ns, portOffset := minikubetestenv.ClaimCluster(t)
 			minikubetestenv.PutNamespace(t, ns)
@@ -43,7 +44,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				ns,
 				k,
 				&minikubetestenv.DeployOpts{
-					Version:      from,
+					Version:      fromCache,
 					DisableLoki:  true,
 					PortOffset:   portOffset,
 					CleanupAfter: true,
@@ -61,7 +62,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				k,
 				&minikubetestenv.DeployOpts{
 					WaitSeconds:  10,
-					CleanupAfter: true,
+					CleanupAfter: false,
 					PortOffset:   portOffset,
 				}))
 		})
