@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 	"time"
+	"regexp"
 
 	proto "github.com/gogo/protobuf/proto"
 
@@ -36,7 +37,15 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 	k := testutil.GetKubeClient(suite)
 	for _, from := range fromVersions {
 		suite.Run(fmt.Sprintf("UpgradeFrom_%s", from), func(t *testing.T) {
+			localFrom := from
 			ns, portOffset := minikubetestenv.ClaimCluster(t)
+			earlyVersion, err := regexp.MatchString("^2\\.(0|1)\\..*",localFrom)
+			require.NoError(t, err)
+			if !earlyVersion {
+				t.Parallel()
+			} else {
+				portOffset = 0 
+			}
 			minikubetestenv.PutNamespace(t, ns)
 			preUpgrade(t, minikubetestenv.InstallRelease(t,
 				context.Background(),
@@ -45,7 +54,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				&minikubetestenv.DeployOpts{
 					Version:     from,
 					DisableLoki: true,
-					PortOffset:  0,
+					PortOffset:  portOffset,
 					// For 2.3 -> future upgrades, we'll want to delete these
 					// overrides.  They became the default (instead of random)
 					// in the 2.3 alpha cycle.
@@ -91,6 +100,7 @@ func TestUpgradeOpenCVWithAuth(t *testing.T) {
 		"2.3.9",
 		"2.4.3",
 	}
+	t.Parallel()
 	upgradeTest(t, context.Background(), fromVersions,
 		func(t *testing.T, c *client.APIClient) {
 			c = testutil.AuthenticatedPachClient(t, c, upgradeSubject)
@@ -169,6 +179,7 @@ func TestUpgradeLoad(t *testing.T) {
 	if skip {
 		t.Skip("Skipping upgrade test")
 	}
+	t.Parallel()
 	fromVersions := []string{"2.3.9"}
 	testId := uuid.NewWithoutDashes()[0:8]
 	dagSpec := fmt.Sprintf(`
