@@ -63,7 +63,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				k,
 				&minikubetestenv.DeployOpts{
 					DisableLoki:  true,
-					WaitSeconds:  90,
+					WaitSeconds:  30,
 					CleanupAfter: true,
 					PortOffset:   portOffset,
 					ValueOverrides: map[string]string{
