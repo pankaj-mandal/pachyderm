@@ -37,7 +37,6 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 	for _, from := range fromVersions {
 		suite.Run(fmt.Sprintf("UpgradeFrom_%s", from), func(t *testing.T) {
 			threadFrom := from
-			t.Parallel()
 			ns, portOffset := minikubetestenv.ClaimCluster(t)
 			minikubetestenv.PutNamespace(t, ns)
 			preUpgrade(t, minikubetestenv.InstallRelease(t,
