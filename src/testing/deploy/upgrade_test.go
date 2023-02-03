@@ -36,7 +36,6 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 	k := testutil.GetKubeClient(suite)
 	for _, from := range fromVersions {
 		suite.Run(fmt.Sprintf("UpgradeFrom_%s", from), func(t *testing.T) {
-			threadFrom := from
 			ns, portOffset := minikubetestenv.ClaimCluster(t)
 			minikubetestenv.PutNamespace(t, ns)
 			preUpgrade(t, minikubetestenv.InstallRelease(t,
@@ -44,9 +43,9 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				ns,
 				k,
 				&minikubetestenv.DeployOpts{
-					Version:     threadFrom,
+					Version:     from,
 					DisableLoki: true,
-					PortOffset:  portOffset,
+					PortOffset:  0,
 					// For 2.3 -> future upgrades, we'll want to delete these
 					// overrides.  They became the default (instead of random)
 					// in the 2.3 alpha cycle.
