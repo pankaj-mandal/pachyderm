@@ -17,6 +17,7 @@ import (
 	"github.com/pachyderm/pachyderm/v2/src/internal/minikubetestenv"
 	"github.com/pachyderm/pachyderm/v2/src/internal/require"
 	"github.com/pachyderm/pachyderm/v2/src/internal/testutil"
+	"github.com/pachyderm/pachyderm/v2/src/internal/uuid"
 	"github.com/pachyderm/pachyderm/v2/src/pfs"
 	"github.com/pachyderm/pachyderm/v2/src/pps"
 )
@@ -35,6 +36,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 	k := testutil.GetKubeClient(suite)
 	for _, from := range fromVersions {
 		suite.Run(fmt.Sprintf("UpgradeFrom_%s", from), func(t *testing.T) {
+			threadFrom := from
 			t.Parallel()
 			ns, portOffset := minikubetestenv.ClaimCluster(t)
 			minikubetestenv.PutNamespace(t, ns)
@@ -43,7 +45,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				ns,
 				k,
 				&minikubetestenv.DeployOpts{
-					Version:     from,
+					Version:     threadFrom,
 					DisableLoki: true,
 					PortOffset:  portOffset,
 					// For 2.3 -> future upgrades, we'll want to delete these
@@ -52,6 +54,7 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 					ValueOverrides: map[string]string{
 						"global.postgresql.postgresqlPassword":         "insecure-user-password",
 						"global.postgresql.postgresqlPostgresPassword": "insecure-root-password",
+						"pachw.maxReplicas":                            "0",
 					},
 				}))
 			postUpgrade(t, minikubetestenv.UpgradeRelease(t,
@@ -59,9 +62,15 @@ func upgradeTest(suite *testing.T, ctx context.Context, fromVersions []string, p
 				ns,
 				k,
 				&minikubetestenv.DeployOpts{
-					WaitSeconds:  10,
+					DisableLoki:  true,
+					WaitSeconds:  90,
 					CleanupAfter: true,
 					PortOffset:   portOffset,
+					ValueOverrides: map[string]string{
+						"global.postgresql.postgresqlPassword":         "insecure-user-password",
+						"global.postgresql.postgresqlPostgresPassword": "insecure-root-password",
+						"pachw.maxReplicas":                            "0",
+					},
 				}))
 		})
 	}
@@ -163,10 +172,11 @@ func TestUpgradeLoad(t *testing.T) {
 		t.Skip("Skipping upgrade test")
 	}
 	fromVersions := []string{"2.3.9"}
-	dagSpec := `
-default-load-test-source:
-default-load-test-pipeline: default-load-test-source
-`
+	testId := uuid.NewWithoutDashes()[0:8]
+	dagSpec := fmt.Sprintf(`
+%s-source:
+%s-pipeline: %s-source
+`, testId, testId, testId)
 	loadSpec := `
 count: 5
 modifications:
@@ -192,7 +202,8 @@ validator:
     count: 1
 `
 	var stateID string
-	upgradeTest(t, context.Background(), fromVersions,
+	ctx := context.Background()
+	upgradeTest(t, ctx, fromVersions,
 		func(t *testing.T, c *client.APIClient) {
 			c = testutil.AuthenticatedPachClient(t, c, upgradeSubject)
 			resp, err := c.PpsAPIClient.RunLoadTest(c.Ctx(), &pps.RunLoadTestRequest{
@@ -205,6 +216,17 @@ validator:
 		},
 		func(t *testing.T, c *client.APIClient) {
 			c = testutil.AuthenticateClient(t, c, upgradeSubject)
+			require.NoErrorWithinTRetryConstant(t, 120*time.Second, func() error {
+
+				state, err := c.Enterprise.GetState(ctx, &enterprise.GetStateRequest{})
+				if err != nil {
+					return errors.EnsureStack(err)
+				}
+				if state.State != enterprise.State_ACTIVE {
+					return errors.EnsureStack(fmt.Errorf("Enterprise server is not active! State was %v", state.State))
+				}
+				return nil
+			}, 5*time.Second)
 			resp, err := c.PpsAPIClient.RunLoadTest(c.Ctx(), &pps.RunLoadTestRequest{
 				DagSpec:  dagSpec,
 				LoadSpec: loadSpec,
