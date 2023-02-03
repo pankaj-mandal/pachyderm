@@ -3,12 +3,14 @@ package kv
 import (
 	"bytes"
 	"context"
+	"io"
 	"sync"
 	"time"
 
 	"github.com/pachyderm/pachyderm/v2/src/internal/backoff"
 	"github.com/pachyderm/pachyderm/v2/src/internal/errors"
 	"github.com/pachyderm/pachyderm/v2/src/internal/log"
+	"github.com/pachyderm/pachyderm/v2/src/internal/m"
 	"github.com/pachyderm/pachyderm/v2/src/internal/obj"
 	"github.com/pachyderm/pachyderm/v2/src/internal/pacherr"
 	"go.uber.org/zap"
@@ -17,6 +19,31 @@ import (
 type objectAdapter struct {
 	objC    obj.Client
 	bufPool sync.Pool
+}
+
+type countingWriter struct {
+	io.Writer
+	ctx  context.Context
+	name string
+}
+
+func (w *countingWriter) Write(p []byte) (int, error) {
+	time.Sleep(500 * time.Millisecond)
+	m.Inc(w.ctx, w.name, len(p))
+	return w.Writer.Write(p)
+}
+
+type countingReader struct {
+	io.Reader
+	ctx  context.Context
+	name string
+}
+
+func (w *countingReader) Read(p []byte) (int, error) {
+	n, err := w.Reader.Read(p)
+	time.Sleep(500 * time.Millisecond)
+	m.Inc(w.ctx, w.name, n)
+	return n, err
 }
 
 // NewFromObjectClient converts an object client into a key value store.
@@ -34,14 +61,19 @@ func NewFromObjectClient(objC obj.Client) Store {
 
 func (s *objectAdapter) Put(ctx context.Context, key, value []byte) error {
 	return s.retry(ctx, func() error {
-		return errors.EnsureStack(s.objC.Put(ctx, string(key), bytes.NewReader(value)))
+		return errors.EnsureStack(s.objC.Put(ctx, string(key), &countingReader{Reader: bytes.NewReader(value), ctx: ctx, name: "obj_bytes_tx"}))
 	})
 }
 
 func (s *objectAdapter) Get(ctx context.Context, key []byte, cb ValueCallback) error {
 	return s.retry(ctx, func() error {
 		return s.withBuffer(func(buf *bytes.Buffer) error {
-			if err := s.objC.Get(ctx, string(key), buf); err != nil {
+			w := &countingWriter{
+				Writer: buf,
+				ctx:    ctx,
+				name:   "obj_bytes_rx",
+			}
+			if err := s.objC.Get(ctx, string(key), w); err != nil {
 				return errors.EnsureStack(err)
 			}
 			return cb(buf.Bytes())

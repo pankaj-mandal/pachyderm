@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pachyderm/pachyderm/v2/src/internal/log"
+	"github.com/pachyderm/pachyderm/v2/src/internal/m"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +25,7 @@ func Background(process string) context.Context {
 type Option struct {
 	modifyContext func(context.Context) context.Context
 	modifyLogger  log.LogOption
+	addsFields    bool
 }
 
 // WithServerID generates a server ID and attaches it to the context.  It appears on each log
@@ -31,6 +33,7 @@ type Option struct {
 func WithServerID() Option {
 	return Option{
 		modifyLogger: log.WithServerID(),
+		addsFields:   true,
 	}
 }
 
@@ -38,6 +41,7 @@ func WithServerID() Option {
 func WithFields(fields ...zap.Field) Option {
 	return Option{
 		modifyLogger: log.WithFields(fields...),
+		addsFields:   true,
 	}
 }
 
@@ -45,6 +49,7 @@ func WithFields(fields ...zap.Field) Option {
 func WithOptions(opts ...zap.Option) Option {
 	return Option{
 		modifyLogger: log.WithOptions(opts...),
+		addsFields:   true, // it might not, but saying it does is most safe
 	}
 }
 
@@ -52,6 +57,15 @@ func WithOptions(opts ...zap.Option) Option {
 func WithoutRatelimit() Option {
 	return Option{
 		modifyLogger: log.WithoutRatelimit(),
+	}
+}
+
+// WithCounter adds an aggregated counter metric to the context.
+func WithCounter[T m.Monoid](metric string, zero T, options ...m.Option) Option {
+	return Option{
+		modifyContext: func(ctx context.Context) context.Context {
+			return m.NewAggregatedCounter(ctx, metric, zero, options...)
+		},
 	}
 }
 
